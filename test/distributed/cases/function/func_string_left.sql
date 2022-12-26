@@ -33,3 +33,5 @@ select * from t1 where left(str, len) = 'ABC';
 select left(str, 3) from t1;
 select left('sdfsdfsdfsdf', len) from t1;
 drop table t1;
+
+ccc
