@@ -212,7 +212,6 @@ func NewExpressionExecutor(proc *process.Process, planExpr *plan.Expr) (Expressi
 			}
 
 			if err = executor.resultVector.PreExtendAndReset(1); err != nil {
-				executor.Free()
 				return nil, err
 			}
 
@@ -1012,14 +1011,6 @@ func EvaluateFilterByZoneMap(
 	} else {
 		selected = types.DecodeBool(zm.GetMaxBuf())
 	}
-
-	// clean the vector.
-	for i := range vecs {
-		if vecs[i] != nil {
-			vecs[i].Free(proc.Mp())
-			vecs[i] = nil
-		}
-	}
 	return
 }
 
@@ -1058,10 +1049,10 @@ func GetExprZoneMap(
 					if data, ok := args[1].Expr.(*plan.Expr_Bin); ok {
 						vec := vector.NewVec(types.T_any.ToType())
 						vec.UnmarshalBinary(data.Bin.Data)
-						vecs[rid] = vec
+						vecs[args[1].AuxId] = vec
 					} else {
 						zms[expr.AuxId].Reset()
-						vecs[rid] = vector.NewConstNull(types.T_any.ToType(), math.MaxInt, proc.Mp())
+						vecs[args[1].AuxId] = vector.NewConstNull(types.T_any.ToType(), math.MaxInt, proc.Mp())
 						return zms[expr.AuxId]
 					}
 				}
@@ -1186,9 +1177,6 @@ func GetExprZoneMap(
 				ivecs := make([]*vector.Vector, len(args))
 				if isAllConst(args) { // constant fold
 					for i, arg := range args {
-						if vecs[arg.AuxId] != nil {
-							vecs[arg.AuxId].Free(proc.Mp())
-						}
 						if vecs[arg.AuxId], err = EvalExpressionOnce(proc, arg, []*batch.Batch{batch.EmptyForConstFoldBatch}); err != nil {
 							zms[expr.AuxId].Reset()
 							return zms[expr.AuxId]
@@ -1200,9 +1188,6 @@ func GetExprZoneMap(
 						return zms[expr.AuxId]
 					}
 					for i, arg := range args {
-						if vecs[arg.AuxId] != nil {
-							vecs[arg.AuxId].Free(proc.Mp())
-						}
 						if vecs[arg.AuxId], err = index.ZMToVector(zms[arg.AuxId], vecs[arg.AuxId], proc.Mp()); err != nil {
 							zms[expr.AuxId].Reset()
 							return zms[expr.AuxId]
@@ -1222,8 +1207,9 @@ func GetExprZoneMap(
 					zms[expr.AuxId].Reset()
 					return zms[expr.AuxId]
 				}
+				defer result.GetResultVector().Free(proc.Mp())
 				zms[expr.AuxId] = index.VectorToZM(result.GetResultVector(), zms[expr.AuxId])
-				result.GetResultVector().Free(proc.Mp())
+
 			}
 		}
 

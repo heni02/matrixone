@@ -77,9 +77,21 @@ func (r *ReceiverOperator) FreeAllReg() {
 	}
 }
 
+// clean up the batch left in channel
 func (r *ReceiverOperator) FreeSingleReg(regIdx int) {
-	w := r.proc.Reg.MergeReceivers[regIdx]
-	w.CleanChannel(r.proc.GetMPool())
+	ch := r.proc.Reg.MergeReceivers[regIdx].Ch
+	for len(ch) > 0 {
+		bat := <-ch
+		if bat != nil {
+			bat.Clean(r.proc.GetMPool())
+		}
+	}
+}
+
+func (r *ReceiverOperator) CloseAllReg() {
+	for _, c := range r.proc.Reg.MergeReceivers {
+		close(c.Ch)
+	}
 }
 
 // You MUST Init ReceiverOperator with Merge-Type

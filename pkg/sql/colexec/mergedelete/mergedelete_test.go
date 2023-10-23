@@ -194,6 +194,5 @@ func TestMergeDelete(t *testing.T) {
 	batch1.Clean(proc.GetMPool())
 	batch2.Clean(proc.GetMPool())
 	// constVector can't free
-	// 2 * 16 is 2 header of const vector.
-	require.Equal(t, int64(16+2*16), proc.GetMPool().CurrNB())
+	require.Equal(t, int64(16), proc.GetMPool().CurrNB())
 }
